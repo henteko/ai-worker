@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OMOCHA WORKS — Autonomous Ops Console</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%233987e5'/%3E%3Cpath d='M18 5 9 18h6l-1 9 9-13h-6z' fill='%230f131a'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ══════════ トップバー ══════════ -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="20" height="20"><rect width="32" height="32" rx="7" fill="var(--a-blue)"/><path d="M18 5 9 18h6l-1 9 9-13h-6z" fill="#0f131a"/></svg>
+      </span>
+      <span class="brand-name">OMOCHA&nbsp;WORKS</span>
+      <span class="brand-sub">Autonomous Ops Console</span>
+    </div>
+
+    <div class="top-meta">
+      <span class="badge badge-env"><span class="dot dot-good"></span>production</span>
+      <span class="badge">Q3&nbsp;スプリント&nbsp;S2</span>
+      <span class="badge badge-sync" id="syncBadge"><span class="sync-spinner" aria-hidden="true"></span><span id="syncText">同期済み</span></span>
+    </div>
+
+    <div class="top-right">
+      <div class="uptime mono" title="連続稼働時間">
+        <span class="uptime-label">連続稼働</span>
+        <span id="uptime">—</span>
+      </div>
+      <div class="clock mono" id="clock">--:--:--</div>
+      <button class="btn-pause" id="pauseBtn" aria-pressed="false">
+        <span class="pause-icon" id="pauseIcon">❚❚</span><span id="pauseLabel">一時停止</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ══════════ 左：AIエージェント名簿 ══════════ -->
+  <aside class="roster">
+    <div class="panel-title">
+      <span>AIエージェント</span>
+      <span class="count-chip" id="agentCount">5 稼働中</span>
+    </div>
+    <ul class="agent-list" id="agentList"></ul>
+
+    <div class="panel-title sys-title"><span>システム状態</span></div>
+    <div class="sys-panel" id="sysPanel"></div>
+  </aside>
+
+  <!-- ══════════ 中央：KPI + カンバン + チャート ══════════ -->
+  <main class="main">
+
+    <section class="kpi-row" id="kpiRow" aria-label="主要KPI"></section>
+
+    <section class="board" aria-label="タスクボード">
+      <div class="col" data-col="backlog">
+        <div class="col-head"><span class="col-dot" style="background:var(--ink-3)"></span>バックログ<span class="col-count mono" data-count="backlog">0</span></div>
+        <div class="col-body" data-body="backlog"></div>
+      </div>
+      <div class="col" data-col="doing">
+        <div class="col-head"><span class="col-dot" style="background:var(--a-blue)"></span>進行中<span class="col-count mono" data-count="doing">0</span></div>
+        <div class="col-body" data-body="doing"></div>
+      </div>
+      <div class="col" data-col="review">
+        <div class="col-head"><span class="col-dot" style="background:var(--warn)"></span>レビュー<span class="col-count mono" data-count="review">0</span></div>
+        <div class="col-body" data-body="review"></div>
+      </div>
+      <div class="col" data-col="done">
+        <div class="col-head"><span class="col-dot" style="background:var(--good)"></span>完了<span class="col-count mono" data-count="done">0</span></div>
+        <div class="col-body" data-body="done"></div>
+      </div>
+    </section>
+
+    <section class="chart-panel">
+      <div class="chart-head">
+        <span class="chart-title">処理スループット <span class="chart-unit">タスク/時</span></span>
+        <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+        <span class="chart-now mono" id="chartNow">—</span>
+      </div>
+      <div class="chart-wrap" id="chartWrap">
+        <svg id="chartSvg" preserveAspectRatio="none" aria-label="スループット推移チャート"></svg>
+        <div class="chart-tip mono" id="chartTip" hidden></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ══════════ 右：アクティビティフィード ══════════ -->
+  <aside class="feed">
+    <div class="panel-title">
+      <span>アクティビティ</span>
+      <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+    </div>
+    <ul class="feed-list" id="feedList"></ul>
+  </aside>
+
+</div>
+
+<!-- アラートバナー -->
+<div class="alert-banner" id="alertBanner" hidden>
+  <span class="alert-icon" id="alertIcon">⚠</span>
+  <span class="alert-text" id="alertText"></span>
+  <span class="alert-agent mono" id="alertAgent"></span>
+</div>
+
+<!-- トースト通知 -->
+<div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+<!-- AIカーソルレイヤー -->
+<div class="cursor-layer" id="cursorLayer" aria-hidden="true"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
