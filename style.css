@@ -578,7 +578,7 @@ button { font-family: inherit; }
 .feed-list {
   list-style: none;
   overflow-y: auto;
-  padding: 0 12px 14px;
+  padding: 0 12px 132px; /* 下部はマスコットの居場所 */
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -763,8 +763,148 @@ button { font-family: inherit; }
   to   { transform: scale(1); opacity: 0; }
 }
 
+/* ── マネージャーマスコット ──────────────────────── */
+
+.manager {
+  position: fixed;
+  right: 18px;
+  bottom: 10px;
+  z-index: 58;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 120px;
+}
+.manager::before {
+  content: "";
+  position: absolute;
+  inset: -14px -20px -8px;
+  background: radial-gradient(ellipse at 50% 62%, rgba(15, 19, 26, 0.95) 30%, rgba(15, 19, 26, 0) 72%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.mgr-char {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  animation: mgr-bob 3.4s ease-in-out infinite;
+}
+.mgr-char svg {
+  display: block;
+  transition: transform 0.15s;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.5));
+}
+.mgr-char:active svg { transform: scale(0.93); }
+.manager.talking .mgr-char svg { animation: mgr-hop 0.5s ease; }
+
+@keyframes mgr-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+@keyframes mgr-hop {
+  0%   { transform: translateY(0); }
+  40%  { transform: translateY(-9px); }
+  70%  { transform: translateY(1px); }
+  100% { transform: translateY(0); }
+}
+
+.mgr-name {
+  margin-top: 1px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--ink-2);
+}
+.mgr-name span { font-weight: 400; color: var(--ink-3); letter-spacing: 0.04em; }
+
+/* まばたき */
+.mgr-eyes .eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mgr-blink 4.4s infinite;
+}
+@keyframes mgr-blink {
+  0%, 91%, 100% { transform: scaleY(1); }
+  94%           { transform: scaleY(0.08); }
+  97%           { transform: scaleY(1); }
+}
+
+.mgr-light { animation: live-pulse 2.2s ease-in-out infinite; }
+
+/* 表情の切り替え */
+.manager .mgr-eyes-happy,
+.manager .mgr-eyes-worried,
+.manager .mgr-mouth-happy,
+.manager .mgr-mouth-worried { display: none; }
+
+.manager[data-mood="happy"] .mgr-eyes,
+.manager[data-mood="happy"] .mgr-mouth-normal { display: none; }
+.manager[data-mood="happy"] .mgr-eyes-happy,
+.manager[data-mood="happy"] .mgr-mouth-happy { display: block; }
+
+.manager[data-mood="worried"] .mgr-eyes,
+.manager[data-mood="worried"] .mgr-mouth-normal { display: none; }
+.manager[data-mood="worried"] .mgr-eyes-worried,
+.manager[data-mood="worried"] .mgr-mouth-worried { display: block; }
+
+/* 吹き出し */
+.mgr-bubble[hidden] { display: none; }
+
+.mgr-bubble {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 6px;
+  width: 236px;
+  background: var(--card-hi);
+  border: 1px solid rgba(144, 133, 233, 0.55);
+  border-radius: 12px 12px 4px 12px;
+  padding: 8px 12px 10px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--ink);
+  box-shadow: var(--shadow-lift);
+}
+.mgr-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  right: 30px;
+  width: 10px;
+  height: 10px;
+  background: var(--card-hi);
+  border-right: 1px solid rgba(144, 133, 233, 0.55);
+  border-bottom: 1px solid rgba(144, 133, 233, 0.55);
+  transform: rotate(45deg);
+}
+
+.mgr-bubble-tag {
+  display: block;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #9085e9;
+  margin-bottom: 3px;
+}
+.mgr-text { display: block; min-height: 1.6em; }
+
+.mgr-bubble.pop { animation: bubble-pop 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+@keyframes bubble-pop {
+  from { opacity: 0; transform: translateY(6px) scale(0.92); }
+  to   { opacity: 1; transform: none; }
+}
+.mgr-bubble.leaving {
+  transition: opacity 0.25s, transform 0.25s;
+  opacity: 0;
+  transform: translateY(4px) scale(0.96);
+}
+
 /* ── 一時停止 ───────────────────────────────────── */
 
+body.paused .mgr-char,
+body.paused .mgr-eyes .eye,
+body.paused .mgr-light,
 body.paused .eq i,
 body.paused .live-dot,
 body.paused .sync-spinner,
@@ -813,5 +953,6 @@ body.paused .topbar { border-bottom-color: var(--warn); }
   .ai-cursor { transition-duration: 0.01s; }
   .tcard.flying { transition-duration: 0.01s !important; }
   .eq i, .live-dot, .sync-spinner, .agent-avatar::after { animation: none !important; }
+  .mgr-char, .mgr-eyes .eye, .mgr-light, .manager.talking .mgr-char svg { animation: none !important; }
   .tcard.spawn, .feed-item, .toast, .alert-banner { animation-duration: 0.01s; }
 }

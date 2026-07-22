@@ -644,6 +644,9 @@ async function doReview(agent, task) {
   } else {
     // 差し戻し
     feed(`<b>${agent.def.name}</b> が「${task.title}」に修正を依頼 — 差し戻し`, { kind: "warn", color: agent.def.color });
+    if (Math.random() < 0.6) {
+      managerSay("おっと、差し戻しですか。品質第一、いいことです。", { mood: "worried" });
+    }
     await flyCard(task, "doing", agent);
     setAssignee(task, null);
     task.needsReview = false;
@@ -673,12 +676,17 @@ function completeTask(task, reviewer) {
   bumpKpi("revenue", state.kpi.revenue + task.value);
   state.recentDone += 2;
 
+  if (Math.random() < 0.4) {
+    managerSay(pick(MGR_PRAISE)(task, reviewer), { mood: "happy" });
+  }
+
   // マイルストーン
   const n = Math.round(state.kpi.done);
   if (n % 25 === 0) {
     setTimeout(() => {
       toast({ kind: "info", icon: "✦", title: "マイルストーン達成", body: `本日の完了タスクが <b>${n}件</b> を突破しました` });
       feed(`本日の完了タスクが <b>${n}件</b> を突破`, {});
+      managerSay(`本日${n}件目！ケーキでも注文しましょうか。`, { mood: "happy", ms: 6000 });
     }, 1200);
   }
 
@@ -785,6 +793,7 @@ async function runIncident() {
   toast({ kind: "warn", icon: "⚠", title: "インシデント検知", body: msg });
   setStatus(responder, "🚨 インシデント対応中", true);
   setCursorState(responder, "緊急対応");
+  managerSay(`うわっ、${msg}！？ …${responder.def.name}くん、頼みました！`, { mood: "worried", ms: 6500 });
 
   // カーソルがアラートへ急行
   const br = banner.getBoundingClientRect();
@@ -803,6 +812,7 @@ async function runIncident() {
   $("#alertAgent").textContent = `対応: ${responder.def.name}`;
   feed(`<b>${responder.def.name}</b> がインシデントを解決 — 正常稼働に復帰`, { color: responder.def.color });
   toast({ kind: "success", icon: "✓", title: "インシデント解決", body: `対応: <b>${responder.def.name}</b> ／ 影響は自動的に緩和されました` });
+  managerSay(`ふう…${responder.def.name}くん、お見事でした。肝が冷えました…`, { mood: "happy" });
 
   await simSleep(2500);
   banner.classList.add("leaving");
@@ -893,6 +903,94 @@ function ambientFeedLoop() {
 }
 
 /* ═══════════════════════════════════════════════════
+   マネージャーマスコット「KACHO」
+   ═══════════════════════════════════════════════════ */
+
+const MGR = { el: null, bubble: null, text: null, queue: [], talking: false, clicks: 0 };
+
+const MGR_OPINIONS = [
+  () => `本日 ${fmtNum(Math.round(state.kpi.done))}件完了。良いペースですね。`,
+  () => `売上インパクト ¥${fmtNum(Math.round(state.kpi.revenue))}。役員会で自慢しておきます。`,
+  () => `SLA ${state.kpi.sla.toFixed(1)}%。この調子でお願いします。`,
+  () => `自動化された作業時間、もう ${state.kpi.hours.toFixed(1)}h ですか。人間なら過労です。`,
+  () => `${pick(agents).def.name}くん、今日も冴えてますね。`,
+  () => `スループット ${chart.data.length ? chart.data[chart.data.length - 1].v.toFixed(0) : "—"} タスク/時。悪くない数字です。`,
+  () => `私の仕事は…見守ることです。`,
+  () => `「進捗どうですか」と聞かなくていい職場、最高ですね。`,
+  () => `人間のみなさんは、休んでいて大丈夫ですよ。`,
+  () => `全員よく働く…私が育てました（設定です）。`,
+];
+
+const MGR_PRAISE = [
+  (t, r) => `「${t.title}」完了、承認済みです。`,
+  (t, r) => `+¥${fmtNum(t.value)}、確かに記録しました。`,
+  (t, r) => `${r.def.name}くんのレビュー、丁寧で助かります。`,
+  (t, r) => `この調子なら今期の目標、前倒しできますね。`,
+];
+
+function managerSay(text, opts = {}) {
+  if (MGR.queue.length >= 2) MGR.queue.shift();
+  MGR.queue.push({ text, mood: opts.mood || "normal", ms: opts.ms || 4800 });
+  processMgrQueue();
+}
+
+async function processMgrQueue() {
+  if (MGR.talking) return;
+  MGR.talking = true;
+  while (MGR.queue.length) {
+    const { text, mood, ms } = MGR.queue.shift();
+    MGR.el.dataset.mood = mood;
+    MGR.el.classList.remove("talking");
+    void MGR.el.offsetWidth;
+    MGR.el.classList.add("talking");
+
+    MGR.bubble.hidden = false;
+    MGR.bubble.classList.remove("pop", "leaving");
+    void MGR.bubble.offsetWidth;
+    MGR.bubble.classList.add("pop");
+
+    MGR.text.textContent = "";
+    for (const ch of text) {
+      MGR.text.textContent += ch;
+      await sleep(26);
+    }
+    await sleep(ms);
+  }
+  MGR.bubble.classList.add("leaving");
+  await sleep(260);
+  MGR.bubble.hidden = true;
+  MGR.bubble.classList.remove("leaving");
+  MGR.el.dataset.mood = "normal";
+  MGR.el.classList.remove("talking");
+  MGR.talking = false;
+}
+
+function setupManager() {
+  MGR.el = $("#manager");
+  MGR.bubble = $("#mgrBubble");
+  MGR.text = $("#mgrText");
+
+  $("#mgrChar").addEventListener("click", () => {
+    MGR.clicks++;
+    if (MGR.clicks >= 5 && MGR.clicks % 5 === 0) {
+      managerSay("……そんなにクリックしても、給料は上がりませんよ？", { mood: "worried" });
+    } else {
+      managerSay(pick(MGR_OPINIONS)(), { mood: Math.random() < 0.6 ? "happy" : "normal" });
+    }
+  });
+
+  // 定期的にKPIを見て所感を述べる
+  setInterval(() => {
+    if (state.paused || MGR.talking || Math.random() < 0.45) return;
+    managerSay(pick(MGR_OPINIONS)(), { mood: Math.random() < 0.5 ? "happy" : "normal" });
+  }, 26000);
+
+  setTimeout(() => {
+    managerSay("マネージャーのKACHOです。チームは全自動で回しています。私は見てるだけです。", { mood: "happy", ms: 6000 });
+  }, 4500);
+}
+
+/* ═══════════════════════════════════════════════════
    一時停止
    ═══════════════════════════════════════════════════ */
 
@@ -909,6 +1007,11 @@ function setupPause() {
       if (state.paused) setCursorState(a, "停止中");
       else setCursorState(a, "");
     });
+    if (state.paused) {
+      managerSay("休憩ですね。私も一旦お茶にします。", { mood: "normal", ms: 6000 });
+    } else {
+      managerSay("さあ、再開しましょう！", { mood: "happy", ms: 3500 });
+    }
   });
 }
 
@@ -950,6 +1053,7 @@ function init() {
   ambientFeedLoop();
   backlogWatchLoop();
   setupPause();
+  setupManager();
 
   agents.forEach((a) => agentLoop(a));
   incidentLoop();
