@@ -14,6 +14,13 @@ const rand = (min, max) => min + Math.random() * (max - min);
 const randInt = (min, max) => Math.floor(rand(min, max + 1));
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const fmtNum = (n) => n.toLocaleString("ja-JP");
+/** 金額表示。桁が増えてもKPIタイルに収まるよう、1,000万以上は M / B で省略する */
+const fmtYen = (n) => {
+  n = Math.round(n);
+  if (n >= 1e9) return "¥" + (n / 1e9).toFixed(2) + "B";
+  if (n >= 1e7) return "¥" + (n / 1e6).toFixed(1) + "M";
+  return "¥" + fmtNum(n);
+};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const EASE = "cubic-bezier(0.25, 0.9, 0.3, 1)";
@@ -317,7 +324,7 @@ function toast({ kind = "info", icon = "●", title, body, ms = 5200 }) {
 const KPI_DEFS = [
   { key: "done",    label: "本日の完了タスク",     suffix: "件",  fmt: (v) => fmtNum(Math.round(v)) },
   { key: "hours",   label: "自動化された作業時間", suffix: "h",   fmt: (v) => v.toFixed(1) },
-  { key: "revenue", label: "売上インパクト",       suffix: "",    fmt: (v) => "¥" + fmtNum(Math.round(v)) },
+  { key: "revenue", label: "売上インパクト",       suffix: "",    fmt: fmtYen },
   { key: "sla",     label: "SLA遵守率",            suffix: "%",   fmt: (v) => v.toFixed(1) },
 ];
 
