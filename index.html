@@ -33,6 +33,12 @@
         <span id="uptime">—</span>
       </div>
       <div class="clock mono" id="clock">--:--:--</div>
+      <div class="speed-ctl mono" id="speedCtl" role="group" aria-label="再生速度" title="再生速度">
+        <button type="button" data-speed="0.5" aria-pressed="false">0.5×</button>
+        <button type="button" data-speed="1" aria-pressed="false">1×</button>
+        <button type="button" data-speed="2" aria-pressed="true">2×</button>
+        <button type="button" data-speed="4" aria-pressed="false">4×</button>
+      </div>
       <button class="btn-pause" id="pauseBtn" aria-pressed="false">
         <span class="pause-icon" id="pauseIcon">❚❚</span><span id="pauseLabel">一時停止</span>
       </button>

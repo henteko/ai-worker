@@ -42,6 +42,9 @@
   --r-card: 10px;
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
   --shadow-lift: 0 18px 44px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  /* 再生速度（JSが上書き）。速度依存のトランジションはこれで割る */
+  --speed: 2;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -150,6 +153,28 @@ button { font-family: inherit; }
 }
 .btn-pause:hover { background: var(--card-hi); }
 .pause-icon { font-size: 9px; letter-spacing: 1px; color: var(--ink-2); }
+
+/* 再生速度セグメント */
+.speed-ctl {
+  display: inline-flex;
+  padding: 2px;
+  background: var(--panel-2);
+  border: 1px solid var(--line-2);
+  border-radius: 7px;
+}
+.speed-ctl button {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  background: none;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.speed-ctl button:hover { color: var(--ink-2); }
+.speed-ctl button[aria-pressed="true"] { color: var(--ink); background: var(--card-hi); }
 
 /* ── パネル共通 ─────────────────────────────────── */
 
@@ -460,7 +485,7 @@ button { font-family: inherit; }
 /* 進捗バー */
 .tcard .prog { display: none; height: 3px; background: var(--panel-2); border-radius: 2px; overflow: hidden; }
 .tcard.working .prog { display: block; }
-.tcard .prog-fill { height: 100%; width: 0%; border-radius: 2px; background: var(--a-blue); transition: width 0.5s linear; }
+.tcard .prog-fill { height: 100%; width: 0%; border-radius: 2px; background: var(--a-blue); transition: width calc(0.5s / var(--speed)) linear; }
 
 /* レビュー中タイピングインジケータ */
 .tcard .typing { display: none; align-items: center; gap: 6px; font-size: 10.5px; color: var(--ink-2); }
@@ -1014,10 +1039,11 @@ body.paused .topbar { border-bottom-color: var(--warn); }
   #app { grid-template-rows: 46px minmax(0, 1fr); }
   .topbar { gap: 12px; padding: 0 12px; }
   .brand-name { font-size: 13px; letter-spacing: 0.08em; }
-  .uptime { display: none; }
-  .top-right { gap: 10px; }
-  .clock { font-size: 14px; }
-  .btn-pause { padding: 4px 10px; }
+  .uptime, .clock { display: none; }
+  .top-right { gap: 8px; }
+  .speed-ctl button { padding: 3px 6px; font-size: 10.5px; }
+  .btn-pause { padding: 4px 8px; }
+  #pauseLabel { display: none; }
 
   .alert-banner { top: 54px; font-size: 12px; padding: 8px 12px; }
   .tcard .tag { font-size: 9px; }

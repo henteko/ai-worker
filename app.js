@@ -25,13 +25,23 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const EASE = "cubic-bezier(0.25, 0.9, 0.3, 1)";
 
-/** 一時停止に対応した待機。停止中は時間が進まない。 */
+/** 一時停止・再生速度に対応した待機。停止中は時間が進まず、倍速時は速く進む。 */
 async function simSleep(ms) {
   let left = ms;
   while (left > 0) {
     await sleep(100);
-    if (!state.paused) left -= 100;
+    if (!state.paused) left -= 100 * state.speed;
   }
+}
+
+/** 再生速度を反映した実時間（ms） */
+const realMs = (ms) => ms / state.speed;
+
+/** 再生速度に追従する setInterval 相当。次回間隔は毎回その時点の速度で決まる。 */
+function simInterval(fn, ms) {
+  (function tick() {
+    setTimeout(() => { fn(); tick(); }, realMs(ms));
+  })();
 }
 
 function nowTime() {
@@ -99,8 +109,11 @@ const INCIDENTS = [
 
 /* ── 状態 ───────────────────────────────────────── */
 
+const SPEEDS = [0.5, 1, 2, 4];
+
 const state = {
   paused: false,
+  speed: 2, // 既定は2倍速
   incident: false,
   taskSeq: 1041,
   tasks: [],
@@ -167,7 +180,7 @@ function setCursorState(agent, text) {
 function cursorTo(agent, x, y, dur = 1100) {
   agent.x = x;
   agent.y = y;
-  agent.cursorEl.style.transitionDuration = dur + "ms";
+  agent.cursorEl.style.transitionDuration = realMs(dur) + "ms";
   agent.cursorEl.style.transform = `translate(${x}px, ${y}px)`;
   return simSleep(dur + 60);
 }
@@ -270,7 +283,8 @@ async function flyCard(task, destCol, agent, dur = 800) {
   const last = card.getBoundingClientRect();
 
   clone.getBoundingClientRect(); // reflow
-  clone.style.transition = `left ${dur}ms ${EASE}, top ${dur}ms ${EASE}, width ${dur}ms ${EASE}`;
+  const rd = realMs(dur);
+  clone.style.transition = `left ${rd}ms ${EASE}, top ${rd}ms ${EASE}, width ${rd}ms ${EASE}`;
   clone.style.left = last.left + "px";
   clone.style.top = last.top + "px";
   clone.style.width = last.width + "px";
@@ -308,13 +322,13 @@ function toast({ kind = "info", icon = "●", title, body, ms = 5200 }) {
   el.innerHTML = `
     <div class="toast-title"><span class="ticon">${icon}</span>${title}</div>
     ${body ? `<div class="toast-body">${body}</div>` : ""}
-    <div class="toast-timer" style="animation-duration:${ms}ms"></div>`;
+    <div class="toast-timer" style="animation-duration:${realMs(ms)}ms"></div>`;
   stack.appendChild(el);
   while (stack.children.length > 4) stack.firstChild.remove();
   setTimeout(() => {
     el.classList.add("leaving");
     setTimeout(() => el.remove(), 350);
-  }, ms);
+  }, realMs(ms));
 }
 
 /* ═══════════════════════════════════════════════════
@@ -414,7 +428,7 @@ function bumpKpi(key, newVal) {
 
 /** 6秒ごとに履歴スナップショット */
 function kpiSnapshotLoop() {
-  setInterval(() => {
+  simInterval(() => {
     if (state.paused) return;
     // SLAはベースへゆっくり回帰
     if (!state.incident && state.kpi.sla < state.slaBase) {
@@ -453,7 +467,7 @@ function initChart() {
   }
   renderChart();
 
-  setInterval(() => {
+  simInterval(() => {
     if (state.paused) return;
     chart.data.push({ t: Date.now(), v: chartValue() });
     if (chart.data.length > chart.max) chart.data.shift();
@@ -694,7 +708,7 @@ function completeTask(task, reviewer) {
       toast({ kind: "info", icon: "✦", title: "マイルストーン達成", body: `本日の完了タスクが <b>${n}件</b> を突破しました` });
       feed(`本日の完了タスクが <b>${n}件</b> を突破`, {});
       managerSay(`本日${n}件目！ケーキでも注文しましょうか。`, { mood: "happy", ms: 6000 });
-    }, 1200);
+    }, realMs(1200));
   }
 
   // 完了カードは時間差で退場、完了列は最大6枚
@@ -714,7 +728,7 @@ function removeTask(task, delay) {
       if (i >= 0) state.tasks.splice(i, 1);
       updateCounts();
     }, 550);
-  }, delay);
+  }, realMs(delay));
 }
 
 function refillBacklog() {
@@ -725,13 +739,13 @@ function refillBacklog() {
       if (state.tasks.filter((t) => t.col === "backlog").length >= 5) return;
       const t = spawnTask("backlog");
       feed(`新規タスク「${t.title}」がバックログに追加`, {});
-    }, rand(2000, 6000));
+    }, realMs(rand(2000, 6000)));
   }
 }
 
 /** バックログが枯れないよう定期補充 */
 function backlogWatchLoop() {
-  setInterval(() => {
+  simInterval(() => {
     if (state.paused) return;
     refillBacklog();
   }, 9000);
@@ -841,8 +855,8 @@ function clockLoop() {
   const uptime = $("#uptime");
   setInterval(() => {
     clock.textContent = nowTime();
-    if (!state.paused) state.uptimeSec++;
-    const s = state.uptimeSec;
+    if (!state.paused) state.uptimeSec += state.speed;
+    const s = Math.floor(state.uptimeSec);
     const d = Math.floor(s / 86400);
     const hh = String(Math.floor((s % 86400) / 3600)).padStart(2, "0");
     const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
@@ -853,10 +867,10 @@ function clockLoop() {
 
 function syncLoop() {
   const text = $("#syncText");
-  setInterval(() => {
+  simInterval(() => {
     if (state.paused) return;
     text.textContent = "同期中…";
-    setTimeout(() => { text.textContent = "同期済み"; }, 1300);
+    setTimeout(() => { text.textContent = "同期済み"; }, realMs(1300));
   }, 8000);
 }
 
@@ -879,7 +893,7 @@ function buildGauges() {
     g.fillEl = $(".gauge-fill", row);
   });
 
-  setInterval(() => {
+  simInterval(() => {
     if (state.paused) return;
     GAUGES.forEach((g) => {
       let v = g.base + rand(-g.jitter, g.jitter);
@@ -898,7 +912,7 @@ function buildGauges() {
 }
 
 function ambientFeedLoop() {
-  setInterval(() => {
+  simInterval(() => {
     if (state.paused || Math.random() < 0.4) return;
     const a = pick(agents);
     const line = pick(AMBIENT_FEED)
@@ -959,9 +973,9 @@ async function processMgrQueue() {
     MGR.text.textContent = "";
     for (const ch of text) {
       MGR.text.textContent += ch;
-      await sleep(26);
+      await sleep(realMs(26));
     }
-    await sleep(ms);
+    await sleep(realMs(ms));
   }
   MGR.bubble.classList.add("leaving");
   await sleep(260);
@@ -987,7 +1001,7 @@ function setupManager() {
   });
 
   // 定期的にKPIを見て所感を述べる
-  setInterval(() => {
+  simInterval(() => {
     if (state.paused || MGR.talking || Math.random() < 0.45) return;
     managerSay(pick(MGR_OPINIONS)(), { mood: Math.random() < 0.5 ? "happy" : "normal" });
   }, 26000);
@@ -995,6 +1009,34 @@ function setupManager() {
   setTimeout(() => {
     managerSay("マネージャーのKACHOです。チームは全自動で回しています。私は見てるだけです。", { mood: "happy", ms: 6000 });
   }, 4500);
+}
+
+/* ═══════════════════════════════════════════════════
+   再生速度
+   ═══════════════════════════════════════════════════ */
+
+const SPEED_COMMENTS = {
+  0.5: "ゆっくり見守るのも、いいものです。",
+  1:   "等速ですか。じっくり眺める日ですね。",
+  2:   "標準速度に戻しました。",
+  4:   "4倍速…私の目が追いつきません。",
+};
+
+function setSpeed(speed) {
+  if (!SPEEDS.includes(speed) || speed === state.speed) return;
+  state.speed = speed;
+  document.documentElement.style.setProperty("--speed", speed);
+  $$("#speedCtl button").forEach((b) => {
+    b.setAttribute("aria-pressed", Number(b.dataset.speed) === speed);
+  });
+  managerSay(SPEED_COMMENTS[speed], { mood: speed >= 2 ? "worried" : "normal", ms: 3500 });
+}
+
+function setupSpeed() {
+  $("#speedCtl").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-speed]");
+    if (btn) setSpeed(Number(btn.dataset.speed));
+  });
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1060,6 +1102,7 @@ function init() {
   ambientFeedLoop();
   backlogWatchLoop();
   setupPause();
+  setupSpeed();
   setupManager();
 
   agents.forEach((a) => agentLoop(a));
