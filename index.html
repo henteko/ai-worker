@@ -22,7 +22,7 @@
     </div>
 
     <div class="top-meta">
-      <span class="badge badge-env"><span class="dot dot-good"></span>production</span>
+      <span class="badge badge-env" id="envBadge"><span class="dot dot-good"></span><span id="envText">production</span></span>
       <span class="badge">Q3&nbsp;スプリント&nbsp;S2</span>
       <span class="badge badge-sync" id="syncBadge"><span class="sync-spinner" aria-hidden="true"></span><span id="syncText">同期済み</span></span>
     </div>
@@ -38,6 +38,7 @@
         <button type="button" data-speed="1" aria-pressed="false">1×</button>
         <button type="button" data-speed="2" aria-pressed="true">2×</button>
         <button type="button" data-speed="4" aria-pressed="false">4×</button>
+        <button type="button" class="seg-dopa" id="dopaBtn" aria-pressed="false" title="ドパガキモード：速度5×・虹色・課長ハイテンション">ドパガキ</button>
       </div>
       <button class="btn-pause" id="pauseBtn" aria-pressed="false">
         <span class="pause-icon" id="pauseIcon">❚❚</span><span id="pauseLabel">一時停止</span>
@@ -147,6 +148,21 @@
       <g class="mgr-eyes-worried" fill="#eef1f6">
         <circle cx="46" cy="49" r="4"/><circle cx="74" cy="49" r="4"/>
       </g>
+      <!-- サングラス（ドパガキモード時のみ）：体からはみ出す特大サイズ -->
+      <g class="mgr-shades">
+        <!-- ツル：画面端まで -->
+        <path d="M0 40 L6 44 M120 40 L114 44" stroke="#343a4a" stroke-width="4" stroke-linecap="round"/>
+        <!-- ブリッジ -->
+        <path d="M56 44 h8" stroke="#343a4a" stroke-width="4.5" stroke-linecap="round"/>
+        <!-- レンズ -->
+        <rect x="6" y="31" width="50" height="27" rx="11" fill="#0b0d12" stroke="#3c4356" stroke-width="2.5"/>
+        <rect x="64" y="31" width="50" height="27" rx="11" fill="#0b0d12" stroke="#3c4356" stroke-width="2.5"/>
+        <!-- レンズの反射 -->
+        <path d="M14 38 q10 -4 20 0" stroke="rgba(255,255,255,0.55)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M72 38 q10 -4 20 0" stroke="rgba(255,255,255,0.55)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M12 50 l26 -14" stroke="rgba(255,255,255,0.12)" stroke-width="6" stroke-linecap="round"/>
+        <path d="M70 50 l26 -14" stroke="rgba(255,255,255,0.12)" stroke-width="6" stroke-linecap="round"/>
+      </g>
       <!-- 口 -->
       <path class="mgr-mouth-normal" d="M55 62 h10" stroke="#eef1f6" stroke-width="2.5" stroke-linecap="round"/>
       <path class="mgr-mouth-happy" d="M53 60 q7 6 14 0" stroke="#eef1f6" stroke-width="2.5" fill="none" stroke-linecap="round"/>
@@ -161,6 +177,9 @@
   </button>
   <div class="mgr-name">KACHO<span> · Manager AI</span></div>
 </div>
+
+<!-- ドパガキモードの虹色フレーム -->
+<div class="dopa-frame" id="dopaFrame" aria-hidden="true"></div>
 
 <!-- AIカーソルレイヤー -->
 <div class="cursor-layer" id="cursorLayer" aria-hidden="true"></div>

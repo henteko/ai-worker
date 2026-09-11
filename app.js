@@ -110,10 +110,13 @@ const INCIDENTS = [
 /* ── 状態 ───────────────────────────────────────── */
 
 const SPEEDS = [0.5, 1, 2, 4];
+const DOPA_SPEED = 5;
 
 const state = {
   paused: false,
   speed: 2, // 既定は2倍速
+  dopa: false,        // ドパガキモード
+  speedBefore: 2,     // ドパガキ解除時に戻す速度
   incident: false,
   taskSeq: 1041,
   tasks: [],
@@ -697,8 +700,8 @@ function completeTask(task, reviewer) {
   bumpKpi("revenue", state.kpi.revenue + task.value);
   state.recentDone += 2;
 
-  if (Math.random() < 0.4) {
-    managerSay(pick(MGR_PRAISE)(task, reviewer), { mood: "happy" });
+  if (Math.random() < (state.dopa ? 0.8 : 0.4)) {
+    managerSay(mgrPraise(task, reviewer), { mood: "happy" });
   }
 
   // マイルストーン
@@ -949,6 +952,28 @@ const MGR_PRAISE = [
   (t, r) => `この調子なら今期の目標、前倒しできますね。`,
 ];
 
+/* ドパガキモード中のハイテンション版 */
+const MGR_DOPA_OPINIONS = [
+  () => `完了 ${fmtNum(Math.round(state.kpi.done))}件！！まだまだいけるぞォォ！！`,
+  () => `売上 ${fmtYen(state.kpi.revenue)}！！！最高かよ！！！`,
+  () => `SLA ${state.kpi.sla.toFixed(1)}%！！サングラス越しでも眩しいぜ！！`,
+  () => `${pick(agents).def.name}くん！！キレてる！！キレてるよ！！`,
+  () => `止まるんじゃねぇぞ…！！！`,
+  () => `ドパガキ！！！！！！`,
+  () => `見守る？いや、俺も燃えてる！！！`,
+  () => `役員会？呼んでこい！！今すぐだ！！`,
+];
+
+const MGR_DOPA_PRAISE = [
+  (t, r) => `「${t.title}」完了ォォォ！！！！`,
+  (t, r) => `+¥${fmtNum(t.value)}！！！札束が舞う！！！`,
+  (t, r) => `${r.def.name}くんナイスレビュー！！！最高！！`,
+  (t, r) => `ドパガキ！！！！`,
+];
+
+const mgrOpinion = () => pick(state.dopa ? MGR_DOPA_OPINIONS : MGR_OPINIONS)();
+const mgrPraise = (t, r) => pick(state.dopa ? MGR_DOPA_PRAISE : MGR_PRAISE)(t, r);
+
 function managerSay(text, opts = {}) {
   if (MGR.queue.length >= 2) MGR.queue.shift();
   MGR.queue.push({ text, mood: opts.mood || "normal", ms: opts.ms || 4800 });
@@ -996,14 +1021,14 @@ function setupManager() {
     if (MGR.clicks >= 5 && MGR.clicks % 5 === 0) {
       managerSay("……そんなにクリックしても、給料は上がりませんよ？", { mood: "worried" });
     } else {
-      managerSay(pick(MGR_OPINIONS)(), { mood: Math.random() < 0.6 ? "happy" : "normal" });
+      managerSay(mgrOpinion(), { mood: Math.random() < 0.6 ? "happy" : "normal" });
     }
   });
 
   // 定期的にKPIを見て所感を述べる
   simInterval(() => {
-    if (state.paused || MGR.talking || Math.random() < 0.45) return;
-    managerSay(pick(MGR_OPINIONS)(), { mood: Math.random() < 0.5 ? "happy" : "normal" });
+    if (state.paused || MGR.talking || Math.random() < (state.dopa ? 0.2 : 0.45)) return;
+    managerSay(mgrOpinion(), { mood: Math.random() < 0.5 ? "happy" : "normal" });
   }, 26000);
 
   setTimeout(() => {
@@ -1022,13 +1047,19 @@ const SPEED_COMMENTS = {
   4:   "4倍速…私の目が追いつきません。",
 };
 
-function setSpeed(speed) {
-  if (!SPEEDS.includes(speed) || speed === state.speed) return;
+/** 速度を反映（UIの押下状態と CSS 変数も同期） */
+function applySpeed(speed) {
   state.speed = speed;
   document.documentElement.style.setProperty("--speed", speed);
-  $$("#speedCtl button").forEach((b) => {
+  $$("#speedCtl button[data-speed]").forEach((b) => {
     b.setAttribute("aria-pressed", Number(b.dataset.speed) === speed);
   });
+}
+
+function setSpeed(speed) {
+  if (!SPEEDS.includes(speed) || speed === state.speed) return;
+  if (state.dopa) setDopa(false, true); // 速度を選び直したらドパガキは静かに解除
+  applySpeed(speed);
   managerSay(SPEED_COMMENTS[speed], { mood: speed >= 2 ? "worried" : "normal", ms: 3500 });
 }
 
@@ -1037,6 +1068,39 @@ function setupSpeed() {
     const btn = e.target.closest("button[data-speed]");
     if (btn) setSpeed(Number(btn.dataset.speed));
   });
+}
+
+/* ═══════════════════════════════════════════════════
+   ドパガキモード
+   ═══════════════════════════════════════════════════ */
+
+function setDopa(on, quiet = false) {
+  if (on === state.dopa) return;
+  state.dopa = on;
+  document.body.classList.toggle("dopa", on);
+  $("#dopaBtn").setAttribute("aria-pressed", on);
+  $("#envText").textContent = on ? "DOPAGAKI" : "production";
+  $("#agentCount").textContent = on ? "5 限界突破" : "5 稼働中";
+
+  if (on) {
+    state.speedBefore = state.speed;
+    applySpeed(DOPA_SPEED);
+    feed(`<b>ドパガキモード</b> 起動 — 全エージェント、限界突破`, { kind: "warn" });
+    toast({ kind: "warn", icon: "🔥", title: "ドパガキモード起動", body: `再生速度 <b>${DOPA_SPEED}×</b> ／ 課長、サングラス装着`, ms: 5000 });
+    MGR.queue.length = 0;
+    managerSay("ドパガキモード、起動ォォォ！！！サングラス装着！！！", { mood: "happy", ms: 4000 });
+  } else {
+    applySpeed(state.speedBefore);
+    if (!quiet) {
+      feed(`<b>ドパガキモード</b> 解除 — 通常運転に戻ります`, {});
+      MGR.queue.length = 0;
+      managerSay("ふう…サングラスを外します。良い汗をかきました。", { mood: "normal", ms: 4000 });
+    }
+  }
+}
+
+function setupDopa() {
+  $("#dopaBtn").addEventListener("click", () => setDopa(!state.dopa));
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1103,10 +1167,14 @@ function init() {
   backlogWatchLoop();
   setupPause();
   setupSpeed();
+  setupDopa();
   setupManager();
 
   agents.forEach((a) => agentLoop(a));
   incidentLoop();
+
+  // URL に ?dopa を付けると起動時からドパガキモード
+  if (new URLSearchParams(location.search).has("dopa")) setDopa(true);
 
   setTimeout(() => {
     toast({

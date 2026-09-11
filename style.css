@@ -45,6 +45,9 @@
 
   /* 再生速度（JSが上書き）。速度依存のトランジションはこれで割る */
   --speed: 2;
+
+  /* ドパガキの虹色 */
+  --dopa-grad: linear-gradient(90deg, #ff004c, #ff8a00, #ffe600, #2bff5c, #00d0ff, #7b2bff, #ff00c8, #ff004c);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -175,6 +178,32 @@ button { font-family: inherit; }
 }
 .speed-ctl button:hover { color: var(--ink-2); }
 .speed-ctl button[aria-pressed="true"] { color: var(--ink); background: var(--card-hi); }
+
+/* ドパガキ：4×の隣に虹色文字で。押下中は虹色の塗りに反転して発光 */
+.speed-ctl .seg-dopa {
+  margin-left: 2px;
+  padding-inline: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: transparent;
+  background: var(--dopa-grad);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: dopa-slide 3s linear infinite;
+  transition: filter 0.15s;
+}
+.speed-ctl .seg-dopa:hover { filter: brightness(1.25); }
+.speed-ctl .seg-dopa[aria-pressed="true"] {
+  color: #0f131a;
+  background: var(--dopa-grad); /* 共通の押下ルールに上書きされないよう再指定 */
+  background-size: 300% 100%;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  animation-duration: 1.2s;
+  box-shadow: 0 0 12px rgba(255, 0, 140, 0.6);
+}
+@keyframes dopa-slide { to { background-position: 300% 0; } }
 
 /* ── パネル共通 ─────────────────────────────────── */
 
@@ -830,6 +859,7 @@ button { font-family: inherit; }
 }
 .mgr-char svg {
   display: block;
+  overflow: visible; /* 特大サングラスがはみ出しても切れないように */
   transition: transform 0.15s;
   filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.5));
 }
@@ -937,6 +967,63 @@ button { font-family: inherit; }
   transform: translateY(4px) scale(0.96);
 }
 
+/* ── ドパガキモード ─────────────────────────────── */
+
+@keyframes dopa-hue      { to { filter: hue-rotate(360deg); } }
+@keyframes dopa-hue-blur { from { filter: blur(16px) hue-rotate(0deg); } to { filter: blur(16px) hue-rotate(360deg); } }
+
+/* 画面外周の虹色フレーム（本体＋ぼかしグロー） */
+.dopa-frame { display: none; position: fixed; inset: 0; z-index: 30; pointer-events: none; }
+body.dopa .dopa-frame { display: block; }
+.dopa-frame::before,
+.dopa-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 5px;
+  background: conic-gradient(from 0deg, #ff004c, #ff8a00, #ffe600, #2bff5c, #00d0ff, #7b2bff, #ff00c8, #ff004c);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: dopa-hue 2s linear infinite;
+}
+.dopa-frame::after {
+  padding: 16px;
+  opacity: 0.75;
+  animation: dopa-hue-blur 2s linear infinite;
+}
+body.dopa .topbar { border-bottom-color: transparent; }
+body.dopa .badge-env { color: #ffe600; border-color: rgba(255, 230, 0, 0.5); text-shadow: 0 0 8px rgba(255, 230, 0, 0.6); }
+
+/* 課長：サングラス装着・虹色に発光・ハイテンション */
+.mgr-shades { display: none; }
+body.dopa .mgr-shades { display: block; }
+body.dopa .manager .mgr-eyes,
+body.dopa .manager .mgr-eyes-happy,
+body.dopa .manager .mgr-eyes-worried,
+body.dopa .manager .mgr-mouth-normal,
+body.dopa .manager .mgr-mouth-worried { display: none; }
+body.dopa .manager .mgr-mouth-happy { display: block; }
+
+@keyframes dopa-glow {
+  from { filter: drop-shadow(0 0 6px #ff2d95) drop-shadow(0 0 18px #ff2d95) hue-rotate(0deg); }
+  to   { filter: drop-shadow(0 0 6px #ff2d95) drop-shadow(0 0 18px #ff2d95) hue-rotate(360deg); }
+}
+@keyframes dopa-party {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50%      { transform: translateY(-10px) rotate(4deg); }
+}
+body.dopa .mgr-char { animation: mgr-bob 0.5s ease-in-out infinite; }
+body.dopa .mgr-char svg,
+body.dopa .manager.talking .mgr-char svg {
+  animation: dopa-glow 1.6s linear infinite, dopa-party 0.36s ease-in-out infinite;
+}
+body.dopa .mgr-name { color: #ffe600; text-shadow: 0 0 8px rgba(255, 230, 0, 0.6); }
+body.dopa .mgr-bubble { border-color: #ff2d95; box-shadow: var(--shadow-lift), 0 0 18px rgba(255, 45, 149, 0.45); }
+body.dopa .mgr-bubble::after { border-color: #ff2d95; }
+body.dopa .mgr-bubble-tag { color: #ff2d95; }
+
 /* ── 一時停止 ───────────────────────────────────── */
 
 body.paused .mgr-char,
@@ -988,7 +1075,7 @@ body.paused .topbar { border-bottom-color: var(--warn); }
     grid-template-areas: "top" "main";
   }
   .roster { display: none; }
-  .brand-sub, .top-meta { display: none; }
+  .brand-sub, .top-meta, .uptime { display: none; }
 
   .main {
     grid-template-rows: auto minmax(0, 1fr) 118px;
@@ -1034,16 +1121,21 @@ body.paused .topbar { border-bottom-color: var(--warn); }
   .mgr-bubble::after { right: 22px; }
 }
 
+/* トップバーの操作ボタンをアイコンのみに */
+@media (max-width: 700px) {
+  .top-right { gap: 10px; }
+  .btn-pause { padding: 4px 8px; }
+  #pauseLabel { display: none; }
+}
+
 /* 極狭幅（スマホ縦） */
 @media (max-width: 560px) {
   #app { grid-template-rows: 46px minmax(0, 1fr); }
   .topbar { gap: 12px; padding: 0 12px; }
   .brand-name { font-size: 13px; letter-spacing: 0.08em; }
-  .uptime, .clock { display: none; }
+  .clock { display: none; }
   .top-right { gap: 8px; }
-  .speed-ctl button { padding: 3px 6px; font-size: 10.5px; }
-  .btn-pause { padding: 4px 8px; }
-  #pauseLabel { display: none; }
+  .speed-ctl button { padding: 3px 5px; font-size: 10.5px; }
 
   .alert-banner { top: 54px; font-size: 12px; padding: 8px 12px; }
   .tcard .tag { font-size: 9px; }
@@ -1065,5 +1157,6 @@ body.paused .topbar { border-bottom-color: var(--warn); }
   .tcard.flying { transition-duration: 0.01s !important; }
   .eq i, .live-dot, .sync-spinner, .agent-avatar::after { animation: none !important; }
   .mgr-char, .mgr-eyes .eye, .mgr-light, .manager.talking .mgr-char svg { animation: none !important; }
+  .dopa-frame::before, .dopa-frame::after, .speed-ctl .seg-dopa, body.dopa .mgr-char svg { animation: none !important; }
   .tcard.spawn, .feed-item, .toast, .alert-banner { animation-duration: 0.01s; }
 }
