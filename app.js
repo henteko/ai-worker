@@ -139,8 +139,8 @@ function buildAgents() {
       statusEl: $(".agent-status", li),
       cursorEl: cur,
       stateEl: $(".cstate", cur),
-      x: rand(300, innerWidth - 400),
-      y: rand(150, innerHeight - 250),
+      x: rand(40, Math.max(80, innerWidth - 120)),
+      y: rand(80, Math.max(120, innerHeight - 160)),
       busy: false,
     };
     cur.style.transform = `translate(${agent.x}px, ${agent.y}px)`;
